@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LORTEL - ĐẶT PHÒNG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+
+        .filter-section label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+
+        .transition-view {
+            transition: all 0.4s ease-in-out;
+        }
+
+
+        #map-detail {
+            height: 200px;
+            width: 100%;
+            border-radius: 8px;
+            z-index: 10;
+        }
+
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            text-align: center;
+        }
+
+
+        .calendar-day {
+            padding: 8px 0;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+
+        .calendar-day:hover {
+            background: #eee;
+        }
+
+
+        .calendar-day.selected {
+            background: black;
+            color: white;
+            font-weight: bold;
+        }
+
+
+        .calendar-day.disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+
+<body class="bg-gray-50">
+    <!-- NAVIGATION BAR -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-black/60 backdrop-blur-sm text-white px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="font-bold text-xl tracking-wider flex-1">LORTEL</div>
+            <div class="space-x-8 hidden md:flex flex-1 justify-center">
+                <a href="index.html" class="hover:text-gray-300 transition text-sm font-medium">TRANG CHỦ</a>
+                <a href="#" class="border-b-2 border-white text-sm font-medium">ĐẶT PHÒNG</a>
+                <a href="#" class="hover:text-gray-300 transition text-sm font-medium">TIN TỨC</a>
+            </div>
+            <div class="hidden md:flex flex-1 justify-end space-x-6 items-center">
+                <a href="#" class="hover:text-gray-300 transition text-sm font-medium">ĐĂNG KÝ</a>
+                <a href="#"
+                    class="bg-white text-black px-4 py-1.5 rounded text-sm font-bold hover:bg-gray-200 transition">ĐĂNG
+                    NHẬP</a>
+            </div>
+        </div>
+    </nav>
+
+
+    <!-- SEARCH PANEL -->
+    <section class="pt-24 pb-12 px-6 max-w-4xl mx-auto text-center">
+        <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 relative">
+            <div class="grid grid-cols-1 gap-6 text-left">
+                <div class="relative">
+                    <label class="block text-xs font-bold uppercase mb-1">Nơi bạn muốn thuê</label>
+                    <div class="flex border-b-2 border-gray-800 items-center py-2">
+                        <input type="text" id="location-input" placeholder="Nhập thành phố hoặc tên khách sạn..."
+                            class="w-full outline-none" />
+                        <button onclick="openMap()" title="Chọn trên bản đồ">
+                            <i class="fas fa-map-marker-alt text-gray-500 hover:text-black transition"></i>
+                        </button>
+                    </div>
+                </div>
+
+
+                <div class="relative">
+                    <label class="block text-xs font-bold uppercase mb-1">Ngày bạn ở</label>
+                    <div class="flex border-b-2 border-gray-800 items-center py-2">
+                        <input type="text" id="date-input" placeholder="DD/MM/YYYY - DD/MM/YYYY"
+                            class="w-full outline-none" autocomplete="off" />
+                        <button id="calendar-trigger" type="button">
+                            <i class="fas fa-calendar-alt text-gray-500 hover:text-black transition"></i>
+                        </button>
+                    </div>
+
+
+                    <div id="calendar-dropdown"
+                        class="hidden absolute top-full left-0 mt-2 bg-white shadow-2xl border border-gray-200 rounded-xl z-[100] p-6 w-full max-w-[600px]">
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <div class="flex-1">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="font-bold text-sm uppercase">Nhận phòng</h4>
+                                    <span id="checkin-month" class="text-xs font-bold text-gray-500">Tháng 3,
+                                        2026</span>
+                                </div>
+                                <div class="calendar-grid mb-2 text-[10px] font-bold text-gray-400">
+                                    <div>CN</div>
+                                    <div>T2</div>
+                                    <div>T3</div>
+                                    <div>T4</div>
+                                    <div>T5</div>
+                                    <div>T6</div>
+                                    <div>T7</div>
+                                </div>
+                                <div id="checkin-days" class="calendar-grid"></div>
+                            </div>
+                            <div class="flex-1 border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="font-bold text-sm uppercase">Trả phòng</h4>
+                                    <span id="checkout-month" class="text-xs font-bold text-gray-500">Tháng 3,
+                                        2026</span>
+                                </div>
+                                <div class="calendar-grid mb-2 text-[10px] font-bold text-gray-400">
+                                    <div>CN</div>
+                                    <div>T2</div>
+                                    <div>T3</div>
+                                    <div>T4</div>
+                                    <div>T5</div>
+                                    <div>T6</div>
+                                    <div>T7</div>
+                                </div>
+                                <div id="checkout-days" class="calendar-grid"></div>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="button" onclick="closeCalendar()"
+                                class="text-xs font-bold uppercase hover:underline">Đóng</button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase mb-1 text-center">Số người</label>
+                        <div class="flex border-2 border-gray-800 rounded items-center">
+                            <button type="button" onclick="adjustValue('people-count', -1)"
+                                class="px-4 py-2 border-r border-gray-800 hover:bg-gray-100">-</button>
+                            <input type="number" id="people-count" value="2" min="1"
+                                class="w-full text-center outline-none" />
+                            <button type="button" onclick="adjustValue('people-count', 1)"
+                                class="px-4 py-2 border-l border-gray-800 hover:bg-gray-100">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase mb-1 text-center">Số phòng</label>
+                        <div class="flex border-2 border-gray-800 rounded items-center">
+                            <button type="button" onclick="adjustValue('room-count', -1)"
+                                class="px-4 py-2 border-r border-gray-800 hover:bg-gray-100">-</button>
+                            <input type="number" id="room-count" value="1" min="1"
+                                class="w-full text-center outline-none" />
+                            <button type="button" onclick="adjustValue('room-count', 1)"
+                                class="px-4 py-2 border-l border-gray-800 hover:bg-gray-100">+</button>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="updateUI()"
+                    class="w-full bg-black text-white py-4 rounded-lg font-bold hover:bg-gray-800 transition block text-center uppercase tracking-widest">
+                    Tìm kiếm <i class="fas fa-search ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- VIEW 1: KẾT QUẢ TÌM KIẾM -->
+        <div id="results-view" class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <aside class="space-y-6 filter-section">
+                <h3 class="font-black text-lg uppercase border-b-2 border-black pb-2">Bộ lọc</h3>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="mb-0">Giá thành tối đa</label>
+                        <span id="price-max-label" class="text-[10px] font-bold text-gray-400">5.000.000đ</span>
+                    </div>
+                    <input type="range" min="0" max="5000000" step="100000" value="5000000" class="w-full accent-black"
+                        oninput="filters.priceMax = this.value; updatePriceLabel(this.value); updateUI();" />
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-1 font-medium">
+                        <span>0đ</span>
+                        <span id="current-price-display" class="text-black font-bold">5.000.000đ</span>
+                        <span>5.000.000đ</span>
+                    </div>
+                </div>
+                <div>
+                    <label>Tiện ích</label>
+                    <div class="space-y-2 text-sm">
+                        <label class="flex items-center font-normal lowercase italic"><input type="checkbox"
+                                class="mr-2" checked /> Wifi miễn phí</label>
+                        <label class="flex items-center font-normal lowercase italic"><input type="checkbox"
+                                class="mr-2" /> Hồ bơi</label>
+                    </div>
+                </div>
+            </aside>
+
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium">Sắp xếp theo:</label>
+                        <select id="sort-select"
+                            class="border-none bg-transparent font-bold text-sm focus:ring-0 cursor-pointer"
+                            onchange="filters.sortBy = this.value; updateUI();">
+                            <option value="price-asc">Giá thấp đến cao</option>
+                            <option value="price-desc">Giá cao đến thấp</option>
+                            <option value="rating">Đánh giá cao nhất</option>
+                        </select>
+                    </div>
+                    <span id="result-count" class="text-xs text-gray-400 font-bold uppercase"></span>
+                </div>
+
+
+                <!-- Hotel Container -->
+                <div id="hotel-container" class="space-y-6">
+                    <!-- Cards sẽ được render tự động ở đây -->
+                </div>
+            </div>
+        </div>
+
+
+        <!-- VIEW 2: CHI TIẾT (ẨN) -->
+        <div id="detail-view" class="hidden space-y-8 animate-in fade-in duration-500">
+            <button onclick="showResults()" class="text-sm font-bold uppercase hover:underline mb-4 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i> Trở lại kết quả tìm kiếm
+            </button>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Slide ảnh & Mô tả -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="aspect-video bg-gray-200 rounded-xl overflow-hidden relative group">
+                        <img src="https://picsum.photos/id/164/1200/800" class="w-full h-full object-cover"
+                            id="detail-main-img" />
+                        <div
+                            class="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition">
+                            <button class="bg-black/50 text-white p-2 rounded-full"><i
+                                    class="fas fa-chevron-left"></i></button>
+                            <button class="bg-black/50 text-white p-2 rounded-full"><i
+                                    class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                        <h2 id="detail-hotel-name" class="text-2xl font-black uppercase mb-4">Mô tả khách sạn</h2>
+                        <p class="text-gray-600 leading-relaxed">
+                            Tọa lạc tại vị trí đắc địa, chi nhánh này mang đến trải nghiệm lưu trú thượng lưu với thiết
+                            kế hiện đại pha lẫn nét cổ điển. Khách sạn cung cấp đầy đủ các tiện nghi từ hồ bơi vô cực,
+                            phòng gym hiện đại đến chuỗi nhà hàng phục vụ ẩm thực phong phú.
+                        </p>
+                        <button class="mt-4 text-blue-600 font-bold text-xs uppercase underline">Bấm xem thêm</button>
+                    </div>
+
+                    <!-- Bảng giá phòng -->
+                    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-100 text-[10px] font-black uppercase">
+                                <tr>
+                                    <th class="p-4">Loại/Tên phòng</th>
+                                    <th class="p-4">Số người</th>
+                                    <th class="p-4">Tiện ích</th>
+                                    <th class="p-4">Quyền lợi</th>
+                                    <th class="p-4 text-right">Giá</th>
+                                    <th class="p-4 text-center">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr>
+                                    <td class="p-4 font-bold">Standard Double</td>
+                                    <td class="p-4 text-gray-500">2 Người</td>
+                                    <td class="p-4"><i class="fas fa-tv mr-2"></i><i class="fas fa-wind"></i></td>
+                                    <td class="p-4 text-green-600 text-[10px] font-bold italic">Hủy miễn phí</td>
+                                    <td class="p-4 text-right font-black">1.200.000đ</td>
+                                    <td class="p-4 text-center">
+                                        <button onclick="handleBooking()"
+                                            class="bg-black text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition">
+                                            Đặt ngay
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="p-4 font-bold">Deluxe City View</td>
+                                    <td class="p-4 text-gray-500">2 Người</td>
+                                    <td class="p-4"><i class="fas fa-tv mr-2"></i><i class="fas fa-bath"></i></td>
+                                    <td class="p-4 text-gray-400 text-[10px] italic">Ăn sáng +200k</td>
+                                    <td class="p-4 text-right font-black">1.850.000đ</td>
+                                    <td class="p-4 text-center">
+                                        <button onclick="handleBooking()"
+                                            class="bg-black text-white text-[10px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition">
+                                            Đặt ngay
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sidebar: Đánh giá & Bản đồ -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm text-center">
+                        <div id="detail-hotel-rating" class="text-4xl font-black mb-1">4.8</div>
+                        <div class="text-yellow-500 mb-2">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
+                                class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <div class="text-xs font-bold uppercase text-gray-400">Rất tốt (1.2k lượt)</div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                        <h4 class="font-bold text-xs uppercase mb-3">Vị trí trên bản đồ</h4>
+                        <div id="map-detail"
+                            class="bg-gray-100 flex items-center justify-center text-gray-400 text-xs italic">
+                            Bản đồ đang được tải...
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2 italic text-center">Bấm để xem chỉ dẫn đường đi</p>
+                    </div>
+
+                    <!-- Review Section -->
+                    <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                        <h4 class="font-bold text-xs uppercase mb-4 border-b pb-2">Đánh giá khách hàng</h4>
+                        <div class="max-h-[300px] overflow-y-auto space-y-4 custom-scrollbar pr-2 h-64">
+                            <div class="border-b pb-3">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-bold text-xs">Nguyễn Văn A</span>
+                                    <span class="text-[10px] text-gray-400">12/01/2024</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 italic">"Phòng rất sạch sẽ, nhân viên nhiệt tình hỗ
+                                    trợ check-in sớm."</p>
+                            </div>
+                            <div class="border-b pb-3">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-bold text-xs">Trần Thị B</span>
+                                    <span class="text-[10px] text-gray-400">05/01/2024</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 italic">"Gần trung tâm, đi lại thuận tiện. Tuy nhiên
+                                    đồ ăn sáng chưa đa dạng."</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- FOOTER -->
+    <footer class="bg-gray-100 py-16 px-6 border-t border-gray-200 text-center">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 text-gray-600 text-left">
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Về chúng tôi</h5>
+                <p class="text-sm">Chuỗi khách sạn đẳng cấp hàng đầu.</p>
+            </div>
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Liên kết</h5>
+                <ul class="text-sm space-y-2">
+                    <li>Chính sách</li>
+                    <li>Bản đồ</li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Theo dõi</h5>
+                <div class="flex space-x-4">
+                    <i class="fab fa-facebook"></i><i class="fab fa-instagram"></i>
+                </div>
+            </div>
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Đăng kí nhận tin</h5>
+                <div class="flex border-b border-black">
+                    <input type="text" class="bg-transparent w-full outline-none" /><i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+        <div class="mt-12 text-xs text-gray-400">
+            &copy; 2024 Hotel Management System.
+        </div>
+    </footer>
+
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- DỮ LIỆU TOÀN CỤC ---
+        const rooms = [
+            {
+                id: 1,
+                name: "Lortel Quận 1",
+                price: 1500000,
+                rating: 4.8,
+                image: "https://picsum.photos/id/164/400/300",
+                location: "123 Lê Thánh Tôn, Quận 1, TP.HCM",
+                tag: "PREMIUM",
+                amenities: ["wifi", "pool", "food", "gym"]
+            },
+            {
+                id: 2,
+                name: "Lortel Phú Nhuận",
+                price: 900000,
+                rating: 4.2,
+                image: "https://picsum.photos/id/10/400/300",
+                location: "45 Phan Xích Long, Phú Nhuận",
+                tag: "GARDEN",
+                amenities: ["wifi", "food"]
+            },
+            {
+                id: 3,
+                name: "Lortel Thủ Đức",
+                price: 850000,
+                rating: 4.0,
+                image: "https://picsum.photos/id/20/400/300",
+                location: "15 Võ Văn Ngân, Thủ Đức",
+                tag: "NEW",
+                amenities: ["wifi", "gym"]
+            },
+            {
+                id: 4,
+                name: "Lortel Quận 7",
+                price: 2200000,
+                rating: 4.7,
+                image: "https://picsum.photos/id/30/400/300",
+                location: "88 Nguyễn Văn Linh, Quận 7",
+                tag: "LUXURY",
+                amenities: ["wifi", "pool", "food", "gym"]
+            },
+            {
+                id: 5,
+                name: "Lortel Bình Thạnh",
+                price: 1100000,
+                rating: 4.3,
+                image: "https://picsum.photos/id/40/400/300",
+                location: "200 Điện Biên Phủ, Bình Thạnh",
+                tag: "VIEW",
+                amenities: ["wifi", "food"]
+            },
+            {
+                id: 6,
+                name: "Lortel Tân Bình",
+                price: 950000,
+                rating: 4.1,
+                image: "https://picsum.photos/id/50/400/300",
+                location: "10 Phổ Quang, Tân Bình",
+                tag: "AIRPORT",
+                amenities: ["wifi", "food"]
+            },
+            {
+                id: 7,
+                name: "Lortel Premium Quận 1",
+                price: 1200000,
+                rating: 4.5,
+                image: "https://picsum.photos/id/164/400/300",
+                location: "123 Lê Thánh Tôn, Quận 1, TP.HCM",
+                tag: "HOT",
+                amenities: ["wifi", "pool", "food"]
+            },
+            {
+                id: 8,
+                name: "Lortel Phú Nhuận Garden",
+                price: 950000,
+                rating: 4.0,
+                image: "https://picsum.photos/id/10/400/300",
+                location: "45 Phan Xích Long, Phú Nhuận",
+                tag: "",
+                amenities: ["wifi"]
+            },
+            {
+                id: 9,
+                name: "Lortel Villa Riverside",
+                price: 3500000,
+                rating: 5.0,
+                image: "https://picsum.photos/id/101/400/300",
+                location: "Thảo Điền, Quận 2",
+                tag: "LUXURY",
+                amenities: ["wifi", "pool", "food", "gym"]
+            },
+            {
+                id: 10,
+                name: "Lortel Studio Center",
+                price: 750000,
+                rating: 3.8,
+                image: "https://picsum.photos/id/111/400/300",
+                location: "Bình Thạnh, TP.HCM",
+                tag: "",
+                amenities: ["wifi"]
+            }
+        ];
+
+
+        let filters = {
+            priceMax: 5000000,
+            sortBy: 'price-asc'
+        };
+
+
+        // --- HÀM CẬP NHẬT UI ---
+        function updateUI() {
+            const container = document.getElementById('hotel-container');
+            const countDisplay = document.getElementById('result-count');
+
+            // 1. Lọc
+            let filtered = rooms.filter(room => room.price <= filters.priceMax);
+
+
+            // 2. Sắp xếp
+            filtered.sort((a, b) => {
+                if (filters.sortBy === 'price-asc') return a.price - b.price;
+                if (filters.sortBy === 'price-desc') return b.price - a.price;
+                if (filters.sortBy === 'rating') return b.rating - a.rating;
+                return 0;
+            });
+
+
+            countDisplay.innerText = `${filtered.length} KẾT QUẢ`;
+
+
+            // 3. Render
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center py-12 text-gray-400 font-bold uppercase italic">Không tìm thấy phòng phù hợp ngân sách</div>`;
+                return;
+            }
+
+
+            container.innerHTML = filtered.map(room => `
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col md:flex-row shadow-sm hover:shadow-md transition">
+                    <img src="${room.image}" class="w-full md:w-64 h-48 object-cover" alt="Hotel" />
+                    <div class="p-6 flex-1 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between">
+                                <h4 class="font-bold text-xl uppercase">${room.name}</h4>
+                                ${room.tag ? `<span class="bg-yellow-400 text-[10px] font-bold px-2 py-1 rounded">${room.tag}</span>` : ''}
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1"><i class="fas fa-map-marker-alt mr-1"></i> ${room.location}</p>
+                            <div class="flex items-center mt-2 text-yellow-500 text-sm">
+                                ${Array(Math.floor(room.rating)).fill('<i class="fas fa-star"></i>').join('')}
+                                ${room.rating % 1 !== 0 ? '<i class="fas fa-star-half-alt"></i>' : ''}
+                                <span class="text-gray-400 text-xs ml-2">(${room.rating})</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-end mt-4">
+                            <div class="text-xs text-gray-400">
+                                ${room.amenities.includes('wifi') ? '<i class="fas fa-wifi mr-2"></i>' : ''}
+                                ${room.amenities.includes('pool') ? '<i class="fas fa-swimming-pool mr-2"></i>' : ''}
+                                ${room.amenities.includes('food') ? '<i class="fas fa-utensils"></i>' : ''}
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xl font-black text-black">${new Intl.NumberFormat('vi-VN').format(room.price)}đ<span class="text-xs font-normal">/đêm</span></div>
+                                <button onclick="showDetail('${room.name}')" class="mt-2 bg-black text-white px-6 py-2 text-xs font-bold uppercase rounded hover:bg-gray-800 transition">Xem chi tiết</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+
+        function updatePriceLabel(val) {
+            const display = document.getElementById('current-price-display');
+            const formatted = new Intl.NumberFormat('vi-VN').format(val) + 'đ';
+            display.innerText = formatted;
+            document.getElementById('price-max-label').innerText = formatted;
+        }
+
+
+        // --- NAVIGATION & OTHER FUNCTIONS ---
+        function showDetail(name) {
+            document.getElementById('results-view').classList.add('hidden');
+            const dv = document.getElementById('detail-view');
+            dv.classList.remove('hidden');
+            document.getElementById('detail-content').innerHTML = `<h2 class="text-2xl font-black uppercase">${name}</h2><p class="mt-4">Thông tin chi tiết đang được cập nhật cho ${name}...</p>`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+
+        function showResults() {
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById('results-view').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+
+        function adjustValue(id, delta) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) || 1;
+            val = Math.max(1, val + delta);
+            input.value = val;
+        }
+        // --- INITIALIZE ---
+        window.onload = () => {
+            updateUI();
+        };
+        // Đóng calendar khi click ngoài
+        window.onclick = function (event) {
+            if (!event.target.closest('#calendar-dropdown') && !event.target.closest('#calendar-trigger')) {
+                document.getElementById("calendar-dropdown").classList.add("hidden");
+            }
+        };
+
+
+        function showDetail(name) {
+            // Tìm thông tin phòng từ dữ liệu mẫu dựa trên tên (hoặc ID)
+            const roomInfo = rooms.find(r => r.name === name);
+
+            // Ẩn danh sách, hiện chi tiết
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('hidden');
+
+            // Cập nhật các thành phần nội dung dựa trên ID
+            if (roomInfo) {
+                document.getElementById('detail-hotel-name').innerText = roomInfo.name;
+                document.getElementById('detail-hotel-rating').innerText = roomInfo.rating;
+                document.getElementById('detail-main-img').src = roomInfo.image;
+            }
+
+            // Cuộn lên đầu trang
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function handleBooking() {
+            // Tạo một thông báo giả lập thay cho alert()
+            const msg = document.createElement('div');
+            msg.innerText = "test";
+            msg.style.position = 'fixed';
+            msg.style.top = '20px';
+            msg.style.left = '50%';
+            msg.style.transform = 'translateX(-50%)';
+            msg.style.backgroundColor = 'black';
+            msg.style.color = 'white';
+            msg.style.padding = '10px 20px';
+            msg.style.borderRadius = '5px';
+            msg.style.zIndex = '9999';
+
+            document.body.appendChild(msg);
+
+            // Tự động xóa sau 2 giây
+            setTimeout(() => {
+                msg.remove();
+            }, 2000);
+
+            console.log("test");
+        }
+    </script>
+</body>
+
+</html>

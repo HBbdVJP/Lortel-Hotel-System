@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LORTEL - LANDING PAGE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .slide-image {
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        /* Calendar UI Custom */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+
+        .calendar-day {
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .calendar-day:hover {
+            background-color: #f3f4f6;
+        }
+
+        .calendar-day.selected {
+            background-color: #000 !important;
+            color: #fff;
+        }
+
+        .calendar-day.disabled {
+            color: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        /* Map Modal */
+        #map-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #map-container {
+            width: 100%;
+            max-width: 800px;
+            height: 500px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #leaflet-map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- NAVIGATION BAR -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-black/60 backdrop-blur-sm text-white px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <!-- Trái: Logo -->
+            <div class="font-bold text-xl tracking-wider flex-1">LORTEL</div>
+
+            <!-- Giữa: Menu chính -->
+            <div class="space-x-8 hidden md:flex flex-1 justify-center">
+                <a href="javascript:void(0)" onclick="handleHomeNavigation()"
+                    class="hover:text-gray-300 transition text-sm font-medium">TRANG CHỦ</a>
+                <a href="#booking-section" class="hover:text-gray-300 transition text-sm font-medium">ĐẶT PHÒNG</a>
+                <a href="#" class="hover:text-gray-300 transition text-sm font-medium">TIN TỨC</a>
+            </div>
+
+            <!-- Phải: Đăng ký/Đăng nhập -->
+            <div class="hidden md:flex flex-1 justify-end space-x-6 items-center">
+                <a href="#" class="hover:text-gray-300 transition text-sm font-medium">ĐĂNG KÝ</a>
+                <a href="#"
+                    class="bg-white text-black px-4 py-1.5 rounded text-sm font-bold hover:bg-gray-200 transition">ĐĂNG
+                    NHẬP</a>
+            </div>
+
+            <!-- Mobile Menu Icon -->
+            <div class="md:hidden"><i class="fas fa-bars text-xl"></i></div>
+        </div>
+    </nav>
+
+    <!-- SECTION 1: GIỚI THIỆU & SLIDE -->
+    <section class="pt-32 pb-12 px-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div>
+            <h2 class="text-sm font-semibold text-gray-500 tracking-widest uppercase mb-2">
+                Giới thiệu
+            </h2>
+            <h1 class="text-4xl font-bold mb-4 text-gray-800">
+                THÔNG TIN KHÁI QUÁT
+            </h1>
+            <p class="text-xl italic text-gray-600 mb-6">
+                "Slogan của khách sạn nằm ở đây"
+            </p>
+            <p class="text-gray-600 leading-relaxed mb-6">
+                Chúng tôi cung cấp dịch vụ lưu trú đẳng cấp với mạng lưới chi nhánh
+                rộng khắp. Hợp tác cùng các đối tác hàng đầu để mang lại trải nghiệm
+                tốt nhất cho khách hàng.
+            </p>
+            <button class="border-2 border-black px-6 py-2 font-bold hover:bg-black hover:text-white transition">
+                HỢP TÁC
+            </button>
+        </div>
+
+        <div class="relative group" id="intro-slide-container">
+            <div class="overflow-hidden rounded-lg aspect-video shadow-xl relative">
+                <img id="slide-display" src="https://picsum.photos/id/164/800/450" alt="Slide ảnh giới thiệu"
+                    class="w-full h-full object-cover slide-image" />
+            </div>
+            <div class="flex justify-center mt-4 space-x-2" id="slide-dots">
+                <button onclick="goToSlide(0)" class="dot w-2 h-2 rounded-full bg-gray-800 transition-colors"
+                    data-index="0"></button>
+                <button onclick="goToSlide(1)" class="dot w-2 h-2 rounded-full bg-gray-400 transition-colors"
+                    data-index="1"></button>
+                <button onclick="goToSlide(2)" class="dot w-2 h-2 rounded-full bg-gray-400 transition-colors"
+                    data-index="2"></button>
+                <button onclick="goToSlide(3)" class="dot w-2 h-2 rounded-full bg-gray-400 transition-colors"
+                    data-index="3"></button>
+            </div>
+        </div>
+    </section>
+
+    <hr class="border-gray-300 mx-6" />
+
+    <!-- SECTION 2: ĐẶT PHÒNG -->
+    <section id="booking-section" class="py-12 px-6 max-w-4xl mx-auto text-center scroll-mt-24">
+        <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 relative">
+            <div class="grid grid-cols-1 gap-6 text-left">
+                <div class="relative">
+                    <label class="block text-xs font-bold uppercase mb-1">Nơi bạn muốn thuê</label>
+                    <div class="flex border-b-2 border-gray-800 items-center py-2">
+                        <input type="text" id="location-input" placeholder="Nhập thành phố hoặc tên khách sạn..."
+                            class="w-full outline-none" />
+                        <button onclick="openMap()" title="Chọn trên bản đồ">
+                            <i class="fas fa-map-marker-alt text-gray-500 hover:text-black transition"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <label class="block text-xs font-bold uppercase mb-1">Ngày bạn ở</label>
+                    <div class="flex border-b-2 border-gray-800 items-center py-2">
+                        <input type="text" id="date-input" placeholder="DD/MM/YYYY - DD/MM/YYYY"
+                            class="w-full outline-none" autocomplete="off" />
+                        <button id="calendar-trigger" type="button">
+                            <i class="fas fa-calendar-alt text-gray-500 hover:text-black transition"></i>
+                        </button>
+                    </div>
+
+                    <!-- Custom Double Calendar Dropdown -->
+                    <div id="calendar-dropdown"
+                        class="hidden absolute top-full left-0 mt-2 bg-white shadow-2xl border border-gray-200 rounded-xl z-[100] p-6 w-full max-w-[600px]">
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <!-- Check-in Calendar -->
+                            <div class="flex-1">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="font-bold text-sm uppercase">Nhận phòng</h4>
+                                    <span id="checkin-month" class="text-xs font-bold text-gray-500">Tháng 3,
+                                        2026</span>
+                                </div>
+                                <div class="calendar-grid mb-2 text-[10px] font-bold text-gray-400">
+                                    <div>CN</div>
+                                    <div>T2</div>
+                                    <div>T3</div>
+                                    <div>T4</div>
+                                    <div>T5</div>
+                                    <div>T6</div>
+                                    <div>T7</div>
+                                </div>
+                                <div id="checkin-days" class="calendar-grid"></div>
+                            </div>
+                            <!-- Check-out Calendar -->
+                            <div class="flex-1 border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="font-bold text-sm uppercase">Trả phòng</h4>
+                                    <span id="checkout-month" class="text-xs font-bold text-gray-500">Tháng 3,
+                                        2026</span>
+                                </div>
+                                <div class="calendar-grid mb-2 text-[10px] font-bold text-gray-400">
+                                    <div>CN</div>
+                                    <div>T2</div>
+                                    <div>T3</div>
+                                    <div>T4</div>
+                                    <div>T5</div>
+                                    <div>T6</div>
+                                    <div>T7</div>
+                                </div>
+                                <div id="checkout-days" class="calendar-grid"></div>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="button" onclick="closeCalendar()"
+                                class="text-xs font-bold uppercase hover:underline">
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase mb-1 text-center">Số người</label>
+                        <div class="flex border-2 border-gray-800 rounded items-center">
+                            <button type="button" onclick="adjustValue('people-count', -1)"
+                                class="px-4 py-2 border-r border-gray-800 hover:bg-gray-100">
+                                -
+                            </button>
+                            <input type="number" id="people-count" value="2" min="1"
+                                class="w-full text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                            <button type="button" onclick="adjustValue('people-count', 1)"
+                                class="px-4 py-2 border-l border-gray-800 hover:bg-gray-100">
+                                +
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase mb-1 text-center">Số phòng</label>
+                        <div class="flex border-2 border-gray-800 rounded items-center">
+                            <button type="button" onclick="adjustValue('room-count', -1)"
+                                class="px-4 py-2 border-r border-gray-800 hover:bg-gray-100">
+                                -
+                            </button>
+                            <input type="number" id="room-count" value="1" min="1"
+                                class="w-full text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                            <button type="button" onclick="adjustValue('room-count', 1)"
+                                class="px-4 py-2 border-l border-gray-800 hover:bg-gray-100">
+                                +
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end items-center space-x-3">
+                    <span class="text-sm font-bold uppercase">Có thú cưng</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" />
+                        <div
+                            class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black">
+                        </div>
+                    </label>
+                </div>
+                <a href="booking.html"
+                    class="w-full bg-black text-white py-4 rounded-lg font-bold hover:bg-gray-800 transition block text-center uppercase tracking-widest">
+                    Bấm tìm kiếm <i class="fas fa-search ml-2"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- MAP MODAL -->
+    <div id="map-modal" onclick="closeMap()">
+        <div id="map-container" onclick="event.stopPropagation()">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold uppercase text-sm">Chọn chi nhánh trên bản đồ</h3>
+                <button onclick="closeMap()" class="text-gray-400 hover:text-black">&times;</button>
+            </div>
+            <div id="leaflet-map"></div>
+        </div>
+    </div>
+
+    <!-- SECTION 3: CHI NHÁNH GẦN BẠN -->
+    <section class="py-12 px-6">
+        <div class="max-w-7xl mx-auto flex justify-between items-end mb-6">
+            <h3 class="text-lg font-bold uppercase text-gray-800">
+                Những chi nhánh gần bạn
+            </h3>
+            <span id="location-status" class="text-xs text-gray-400 italic">Đang xác định vị trí...</span>
+        </div>
+
+        <div id="branch-container" class="flex overflow-x-auto gap-6 custom-scrollbar pb-6 max-w-7xl mx-auto">
+            <!-- Card Chi nhánh 1 -->
+            <div
+                class="min-w-[320px] flex bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <img src="https://picsum.photos/id/10/200/200" alt="Branch" class="w-32 h-32 object-cover" />
+                <div class="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">Chi nhánh Quận 1</h4>
+                        <div class="flex items-center text-yellow-500 text-xs mt-1">
+                            <i class="fas fa-star mr-1"></i> 4.8
+                            <span class="text-gray-400 ml-2">(2.1k km)</span>
+                        </div>
+                    </div>
+                    <div class="text-right font-bold text-blue-600 uppercase text-xs">
+                        Từ 1.200.000đ
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <a href="booking.html?hotelId=1"
+                            class="bg-black text-white text-[9px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition mb-1">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <!-- Thêm các chi nhánh khác... -->
+            <div
+                class="min-w-[320px] flex bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <img src="https://picsum.photos/id/11/200/200" alt="Branch" class="w-32 h-32 object-cover" />
+                <div class="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">Chi nhánh Phú Nhuận</h4>
+                        <div class="text-yellow-500 text-xs mt-1">
+                            <i class="fas fa-star mr-1"></i> 4.5
+                        </div>
+                    </div>
+                    <div class="text-right font-bold text-blue-600 uppercase text-xs">
+                        Từ 950.000đ
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <a href="booking.html?hotelId=2"
+                            class="bg-black text-white text-[9px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition mb-1">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="min-w-[320px] flex bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <img src="https://picsum.photos/id/12/200/200" alt="Branch" class="w-32 h-32 object-cover" />
+                <div class="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">Chi nhánh Thủ Đức</h4>
+                        <div class="text-yellow-500 text-xs mt-1">
+                            <i class="fas fa-star mr-1"></i> 4.2
+                        </div>
+                    </div>
+                    <div class="text-right font-bold text-blue-600 uppercase text-xs">
+                        Từ 700.000đ
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <a href="booking.html?hotelId=3"
+                            class="bg-black text-white text-[9px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition mb-1">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="min-w-[320px] flex bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <img src="https://picsum.photos/id/13/200/200" alt="Branch" class="w-32 h-32 object-cover" />
+                <div class="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">Chi nhánh Quận 7</h4>
+                        <div class="text-yellow-500 text-xs mt-1">
+                            <i class="fas fa-star mr-1"></i> 4.7
+                        </div>
+                    </div>
+                    <div class="text-right font-bold text-blue-600 uppercase text-xs">
+                        Từ 1.500.000đ
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <a href="booking.html?hotelId=4"
+                            class="inline-block bg-black text-white text-[9px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="min-w-[320px] flex bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <img src="https://picsum.photos/id/14/200/200" alt="Branch" class="w-32 h-32 object-cover" />
+                <div class="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">Chi nhánh Bình Thạnh</h4>
+                        <div class="text-yellow-500 text-xs mt-1">
+                            <i class="fas fa-star mr-1"></i> 4.4
+                        </div>
+                    </div>
+                    <div class="text-right font-bold text-blue-600 uppercase text-xs">
+                        Từ 1.100.000đ
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <a href="booking.html?hotelId=5"
+                            class="inline-block bg-black text-white text-[9px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div
+                class="min-w-[320px] flex bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+                <img src="https://picsum.photos/id/15/200/200" alt="Branch" class="w-32 h-32 object-cover" />
+                <div class="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                        <h4 class="font-bold text-sm uppercase">Chi nhánh Tân Bình</h4>
+                        <div class="text-yellow-500 text-xs mt-1">
+                            <i class="fas fa-star mr-1"></i> 4.6
+                        </div>
+                    </div>
+                    <div class="text-right font-bold text-blue-600 uppercase text-xs">
+                        Từ 850.000đ
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <a href="booking.html?hotelId=6"
+                            class="inline-block bg-black text-white text-[9px] font-bold uppercase px-3 py-1.5 rounded hover:bg-gray-800 transition">
+                            Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="border-gray-300 mx-6 my-12" />
+
+    <!-- SECTION 4: BANNER QUẢNG CÁO -->
+    <section class="px-6 mb-16 max-w-7xl mx-auto">
+        <div class="relative w-full aspect-[21/9] rounded-2xl overflow-hidden shadow-2xl group">
+            <img id="banner-display" src="https://picsum.photos/id/201/1200/500" alt="Banner quảng cáo"
+                class="w-full h-full object-cover slide-image" />
+            <div class="absolute inset-0 bg-black/40 flex items-center justify-center text-center p-8">
+                <h2 class="text-white text-3xl md:text-5xl font-black uppercase tracking-widest">
+                    Banner Quảng Cáo
+                </h2>
+            </div>
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2" id="banner-dots">
+                <button onclick="goToBannerSlide(0)" class="banner-dot w-2 h-2 rounded-full bg-white transition-colors"
+                    data-index="0"></button>
+                <button onclick="goToBannerSlide(1)"
+                    class="banner-dot w-2 h-2 rounded-full bg-white/50 transition-colors" data-index="1"></button>
+                <button onclick="goToBannerSlide(2)"
+                    class="banner-dot w-2 h-2 rounded-full bg-white/50 transition-colors" data-index="2"></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 5: HIGHLIGHT GALLERY -->
+    <section class="px-6 mb-24 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2 relative h-96 rounded-lg overflow-hidden group shadow-lg">
+                <img src="https://picsum.photos/id/43/800/600" alt="Highlight 1"
+                    class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                <div class="absolute bottom-0 left-0 p-6 bg-gradient-to-t from-black/80 to-transparent w-full">
+                    <h4 class="text-white font-bold text-xl uppercase">
+                        Hình ảnh Highlight khách sạn
+                    </h4>
+                </div>
+            </div>
+            <div class="h-96 rounded-lg overflow-hidden shadow-lg">
+                <img src="https://picsum.photos/id/44/400/600" alt="H" class="w-full h-full object-cover" />
+            </div>
+            <div class="h-64 rounded-lg overflow-hidden shadow-lg">
+                <img src="https://picsum.photos/id/45/400/400" alt="H" class="w-full h-full object-cover" />
+            </div>
+            <div class="md:col-span-2 h-64 rounded-lg overflow-hidden shadow-lg">
+                <img src="https://picsum.photos/id/46/800/400" alt="H" class="w-full h-full object-cover" />
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-100 py-16 px-6 border-t border-gray-200 text-center">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 text-gray-600 text-left">
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Về chúng tôi</h5>
+                <p class="text-sm">Chuỗi khách sạn đẳng cấp hàng đầu.</p>
+            </div>
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Liên kết</h5>
+                <ul class="text-sm space-y-2">
+                    <li>Chính sách</li>
+                    <li>Bản đồ</li>
+                </ul>
+            </div>
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Theo dõi</h5>
+                <div class="flex space-x-4">
+                    <i class="fab fa-facebook"></i><i class="fab fa-instagram"></i>
+                </div>
+            </div>
+            <div>
+                <h5 class="font-bold text-black mb-6 uppercase">Đăng kí nhận tin</h5>
+                <div class="flex border-b border-black">
+                    <input type="text" class="bg-transparent w-full outline-none" /><i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        </div>
+        <div class="mt-12 text-xs text-gray-400">
+            &copy; 2024 Hotel Management System.
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- DUMMY DATA CHI NHÁNH ---
+        const branchMarkers = [
+            { name: "Chi nhánh Quận 1", lat: 10.7769, lng: 10.7705, address: "123 Lê Thánh Tôn, Quận 1" },
+            { name: "Chi nhánh Phú Nhuận", lat: 10.7954, lng: 10.6834, address: "45 Phan Xích Long, Phú Nhuận" },
+            { name: "Chi nhánh Thủ Đức", lat: 10.8507, lng: 10.7512, address: "15 Võ Văn Ngân, Thủ Đức" },
+            { name: "Chi nhánh Quận 7", lat: 10.7289, lng: 10.7202, address: "88 Nguyễn Văn Linh, Quận 7" },
+            { name: "Chi nhánh Bình Thạnh", lat: 10.8105, lng: 10.7071, address: "200 Điện Biên Phủ, Bình Thạnh" }
+        ];
+
+        let map;
+        function initMap() {
+            if (map) return;
+            map = L.map('leaflet-map').setView([10.7769, 10.7705], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            branchMarkers.forEach(b => {
+                const marker = L.marker([b.lat, b.lng]).addTo(map);
+                marker.bindPopup(`
+            <div class="text-center">
+              <b class="uppercase text-xs">${b.name}</b><br>
+              <span class="text-[10px] text-gray-500">${b.address}</span><br>
+              <button onclick="selectBranch('${b.name}')" class="mt-2 bg-black text-white px-2 py-1 text-[10px] uppercase font-bold rounded">Chọn</button>
+            </div>
+          `);
+            });
+        }
+
+        function openMap() {
+            document.getElementById('map-modal').style.display = 'flex';
+            setTimeout(() => {
+                initMap();
+                map.invalidateSize();
+            }, 100);
+        }
+
+        function closeMap() {
+            document.getElementById('map-modal').style.display = 'none';
+        }
+
+        function selectBranch(name) {
+            document.getElementById('location-input').value = name;
+            closeMap();
+        }
+
+        // --- LOGIC SLIDE 1 (INTRO) ---
+        const introSlides = [
+            "https://picsum.photos/id/164/800/450",
+            "https://picsum.photos/id/10/800/450",
+            "https://picsum.photos/id/11/800/450",
+            "https://picsum.photos/id/12/800/450",
+        ];
+        let currentIntroIdx = 0;
+        const introImg = document.getElementById("slide-display");
+        const introDots = document.querySelectorAll(".dot");
+        let introTimer;
+
+        function updateIntroSlide() {
+            if (!introImg) return;
+            introImg.style.opacity = 0;
+            setTimeout(() => {
+                introImg.src = introSlides[currentIntroIdx];
+                introImg.style.opacity = 1;
+                introDots.forEach((d, i) =>
+                    d.classList.toggle("bg-gray-800", i === currentIntroIdx)
+                );
+                introDots.forEach((d, i) =>
+                    d.classList.toggle("bg-gray-400", i !== currentIntroIdx)
+                );
+            }, 300);
+        }
+
+        function goToSlide(idx) {
+            currentIntroIdx = idx;
+            updateIntroSlide();
+            startIntroTimer();
+        }
+
+        function startIntroTimer() {
+            clearInterval(introTimer);
+            introTimer = setInterval(() => {
+                currentIntroIdx = (currentIntroIdx + 1) % introSlides.length;
+                updateIntroSlide();
+            }, 5000);
+        }
+
+        // --- LOGIC SLIDE 4 (BANNER) ---
+        const bannerSlides = [
+            "https://picsum.photos/id/201/1200/500",
+            "https://picsum.photos/id/202/1200/500",
+            "https://picsum.photos/id/203/1200/500",
+        ];
+        let currentBannerIdx = 0;
+        const bannerImg = document.getElementById("banner-display");
+        const bannerDots = document.querySelectorAll(".banner-dot");
+        let bannerTimer;
+
+        function updateBannerSlide() {
+            if (!bannerImg) return;
+            bannerImg.style.opacity = 0;
+            setTimeout(() => {
+                bannerImg.src = bannerSlides[currentBannerIdx];
+                bannerImg.style.opacity = 1;
+                bannerDots.forEach((d, i) =>
+                    d.classList.toggle("bg-white", i === currentBannerIdx)
+                );
+                bannerDots.forEach((d, i) =>
+                    d.classList.toggle("bg-white/50", i !== currentBannerIdx)
+                );
+            }, 300);
+        }
+
+        function goToBannerSlide(idx) {
+            currentBannerIdx = idx;
+            updateBannerSlide();
+            startBannerTimer();
+        }
+
+        function startBannerTimer() {
+            clearInterval(bannerTimer);
+            bannerTimer = setInterval(() => {
+                currentBannerIdx = (currentBannerIdx + 1) % bannerSlides.length;
+                updateBannerSlide();
+            }, 4000);
+        }
+
+        // --- HÀM TĂNG GIẢM SỐ LƯỢNG ---
+        function adjustValue(id, delta) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) || 1;
+            val = Math.max(1, val + delta);
+            input.value = val;
+        }
+
+        // --- LOGIC CALENDAR CUSTOM ---
+        const dateInput = document.getElementById("date-input");
+        const calendarTrigger = document.getElementById("calendar-trigger");
+        const calendarDropdown = document.getElementById("calendar-dropdown");
+        let checkinDate = null;
+        let checkoutDate = null;
+
+        calendarTrigger.onclick = (e) => {
+            e.stopPropagation();
+            calendarDropdown.classList.toggle("hidden");
+            renderCalendars();
+        };
+
+        function closeCalendar() {
+            calendarDropdown.classList.add("hidden");
+        }
+
+        dateInput.addEventListener("input", (e) => {
+            let val = e.target.value.replace(/\D/g, "");
+            let formatted = "";
+            if (val.length > 0) {
+                formatted += val.substring(0, 2);
+                if (val.length >= 3) formatted += "/" + val.substring(2, 4);
+                if (val.length >= 5) formatted += "/" + val.substring(4, 8);
+                if (val.length >= 9) formatted += " - " + val.substring(8, 10);
+                if (val.length >= 11) formatted += "/" + val.substring(10, 12);
+                if (val.length >= 13) formatted += "/" + val.substring(12, 16);
+            }
+            e.target.value = formatted;
+        });
+
+        function renderCalendars() {
+            const checkinDays = document.getElementById("checkin-days");
+            const checkoutDays = document.getElementById("checkout-days");
+            const daysInMonth = 31;
+            checkinDays.innerHTML = "";
+            checkoutDays.innerHTML = "";
+            for (let i = 1; i <= daysInMonth; i++) {
+                let d1 = document.createElement("div");
+                d1.className = `calendar-day ${checkinDate === i ? "selected" : ""}`;
+                d1.innerText = i;
+                d1.onclick = () => {
+                    checkinDate = i;
+                    updateInput();
+                    renderCalendars();
+                };
+                checkinDays.appendChild(d1);
+                let d2 = document.createElement("div");
+                const isDisabled = checkinDate && i <= checkinDate;
+                d2.className = `calendar-day ${checkoutDate === i ? "selected" : ""} ${isDisabled ? "disabled" : ""}`;
+                d2.innerText = i;
+                if (!isDisabled) {
+                    d2.onclick = () => {
+                        checkoutDate = i;
+                        updateInput();
+                        renderCalendars();
+                        closeCalendar();
+                    };
+                }
+                checkoutDays.appendChild(d2);
+            }
+        }
+
+        function updateInput() {
+            let ci = checkinDate ? (checkinDate < 10 ? "0" + checkinDate : checkinDate) + "/03/2026" : "DD/MM/YYYY";
+            let co = checkoutDate ? (checkoutDate < 10 ? "0" + checkoutDate : checkoutDate) + "/03/2026" : "DD/MM/YYYY";
+            dateInput.value = `${ci} - ${co}`;
+        }
+
+        document.addEventListener("click", (e) => {
+            if (!calendarDropdown.contains(e.target) && e.target !== calendarTrigger && !calendarTrigger.contains(e.target)) {
+                closeCalendar();
+            }
+        });
+
+        window.onload = () => {
+            startIntroTimer();
+            startBannerTimer();
+            setTimeout(() => {
+                const status = document.getElementById("location-status");
+                if (status) status.innerText = "Đang hiển thị các chi nhánh tại TP. Hồ Chí Minh";
+            }, 2000);
+        };
+        // --- ĐIỀU HƯỚNG TRANG CHỦ ---
+        function handleHomeNavigation() {
+            const currentPage = window.location.pathname.split("/").pop();
+            if (currentPage === "index.html" || currentPage === "") {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                window.location.href = "index.html";
+            }
+        }
+    </script>
+</body>
+
+</html>
